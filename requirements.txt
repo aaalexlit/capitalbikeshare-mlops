@@ -1,0 +1,8 @@
+pandas==2.0.3
+ipykernel==6.25.0
+requests==2.31.0
+matplotlib==3.7.2
+seaborn==0.12.2
+prefect==2.11.1
+wandb==0.15.7
+xgboost==1.7.6

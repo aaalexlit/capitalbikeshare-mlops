@@ -90,3 +90,5 @@ target/
 
 .csv
 .zip
+
+/wandb/

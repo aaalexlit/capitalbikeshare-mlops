@@ -4,27 +4,26 @@ from src.data.process import get_year_months
 
 import os
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import pandas as pd
 import requests
 from zipfile import ZipFile
-import logging
-import click
 import wandb
 from dotenv import load_dotenv, find_dotenv
+from prefect.tasks import task_input_hash
+from prefect import task, flow, get_run_logger
 
 
 BASE_URL = 'https://s3.amazonaws.com/capitalbikeshare-data/'
 
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
 load_dotenv(find_dotenv())
 
 
+@task(retries=3, cache_key_fn=task_input_hash, cache_expiration=timedelta(weeks=27))
 def download_locally(file_name: str) -> Path:
     """Download files locally to process and concatenate."""
+    print(f'downloading {file_name}')
     dir_path = get_data_dir()
     filepath = Path(dir_path / 'raw' / file_name)
     if not filepath.exists():
@@ -34,22 +33,54 @@ def download_locally(file_name: str) -> Path:
             return None
         with filepath.open('wb') as f:
             f.write(response.content)
+            print(f'downloaded {file_name}')
     return filepath
 
 
+@task(cache_key_fn=task_input_hash, cache_expiration=timedelta(weeks=27))
 def unzip_file(zip_file_path: Path) -> None:
-    """Unzip files and remove the zip file and __MACOSX folder."""
-    with ZipFile(zip_file_path, 'r') as zip_ref:
-        csv_filename = list(
-            filter(lambda x: x.startswith('2'), zip_ref.namelist()))[0]
-        extracted_csv_path = zip_ref.extract(csv_filename)
-    # needed because some zipped cvs files are named incorrectly
-    Path(extracted_csv_path).rename(zip_file_path.with_suffix('.csv'))
-    os.remove(zip_file_path)
-    # shutil.rmtree(file_path.parent / "__MACOSX", ignore_errors=True)
+    """Unzip root level csv file from the zip archive."""
+    if zip_file_path:
+        print(f'unzipping {zip_file_path}')
+        with ZipFile(zip_file_path, 'r') as zip_ref:
+            csv_filename = list(
+                filter(lambda x: x.startswith('2'), zip_ref.namelist()))[0]
+            extracted_csv_path = zip_ref.extract(csv_filename)
+        # needed because some zipped cvs files are named incorrectly
+        print(f'extracted {extracted_csv_path}')
+        Path(extracted_csv_path).rename(zip_file_path.with_suffix('.csv'))
+        os.remove(zip_file_path)
 
 
-@click.command()
+@task(cache_key_fn=task_input_hash, cache_expiration=timedelta(days=30))
+def zip_the_folder() -> str:
+    """Zip the raw data folder."""
+    print('creating zip archive with all the raw data')
+    return shutil.make_archive(
+        get_data_dir() / 'all_raw_data', 'zip', get_data_dir() / 'raw')
+
+
+
+@flow(name="download and unzip all the data")
+# @task(cache_key_fn=task_input_hash, cache_expiration=timedelta(days=30))
+def download_and_unzip_all_the_data() -> None:
+    cur_date = datetime.now()
+    years, year_months = get_year_months(
+        2018, 1, cur_date.year, cur_date.month
+    )
+    zip_file_names = []
+    for year, months in zip(years, year_months):
+        for month in months:
+            zip_file_name = f'{year}{month:02}-capitalbikeshare-tripdata.zip'
+            zip_file_names.append(zip_file_name)
+    print('start downloading all the data')
+    local_zips = download_locally.map(zip_file_names)
+    # local_zip = download_locally.submit(zip_file_name)
+    unzip_file.map(local_zips)
+    print('finished downloading all the data')
+
+
+@flow(name="download raw data", log_prints=True)
 def download_raw_data():
     """Download all available raw data starting from Jan 2018 up till the current date."""
 
@@ -57,20 +88,12 @@ def download_raw_data():
                            entity=wandb_params.ENTITY,
                            job_type="upload")
 
-    cur_date = datetime.now()
-    years, year_months = get_year_months(
-        2018, 1, cur_date.year, cur_date.month
-    )
-    for year, months in zip(years, year_months):
-        for month in months:
-            zip_file_name = f'{year}{month:02}-capitalbikeshare-tripdata.zip'
-            if local_zip := download_locally(zip_file_name):
-                unzip_file(local_zip)
+    all_downloaded = download_and_unzip_all_the_data()
 
     artifact = wandb.Artifact(wandb_params.RAW_DATA, type='raw_data')
-    all_zip = shutil.make_archive(
-        get_data_dir() / 'all_raw_data', 'zip', get_data_dir() / 'raw')
+    all_zip = zip_the_folder(wait_for=[all_downloaded])
     artifact.add_file(Path(all_zip), name='raw_data')
+    print('uploading raw data artifact to wandb')
     wandb_run.log_artifact(artifact)
 
 

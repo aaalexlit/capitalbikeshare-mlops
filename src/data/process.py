@@ -1,54 +1,35 @@
-import src.wandb_params as wandb_params
-from src.utils import get_data_dir
-
 import os
 import shutil
+import logging
 from pathlib import Path
+from zipfile import ZipFile
+
+import click
 import pandas as pd
 import requests
-from zipfile import ZipFile
-import logging
-import click
+from dotenv import find_dotenv, load_dotenv
+from prefect import flow, task, get_run_logger
+from prefect.tasks import task_input_hash
+
 import wandb
-from dotenv import load_dotenv, find_dotenv
-
-
-BASE_URL = 'https://s3.amazonaws.com/capitalbikeshare-data/'
-
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+import src.wandb_params as wandb_params
+from src.utils import get_data_dir, get_year_months
 
 load_dotenv(find_dotenv())
 
 
-def download_locally(file_name: str) -> Path:
-    """Download files locally to process and concatenate."""
-    dir_path = get_data_dir()
-    filepath = Path(dir_path / 'raw' / file_name)
-    if not filepath.exists():
-        url = BASE_URL + file_name
-        response = requests.get(url, timeout=100)
-        with filepath.open('wb') as f:
-            f.write(response.content)
-    return filepath
-
-
-def unzip_file(file_path: Path) -> None:
-    """Unzip files and remove the zip file and __MACOSX folder."""
-    with ZipFile(file_path, 'r') as zip_ref:
-        zip_ref.extractall(file_path.parent)
-    os.remove(file_path)
-    shutil.rmtree(file_path.parent / "__MACOSX", ignore_errors=True)
-
-
-def process_data(
-    file_path: Path,
-    categorical: [str] = None,
-    numerical: [str] = None,
-    target: str = 'duration',
-) -> pd.DataFrame:
+@task
+def process_data(file_path: Path, categorical: [str] = None,
+                 target: str = 'duration',
+                 keep: [str] = None,
+                 date_columns: [str] = None,
+                 ) -> pd.DataFrame:
     """Process data for modeling."""
 
+    if keep is None:
+        keep = ['started_at']
+    if date_columns is None:
+        date_columns = ['started_at', 'ended_at']
     if categorical is None:
         categorical = [
             'start_station_id',
@@ -56,10 +37,12 @@ def process_data(
             'rideable_type',
             'member_casual',
         ]
-    if numerical is None:
-        numerical = ['hour']
 
-    df = pd.read_csv(file_path, parse_dates=['started_at', 'ended_at'])
+    print(f'processing {file_path}')
+    df = pd.read_csv(file_path, parse_dates=date_columns,
+                     usecols=categorical + date_columns,
+                     dtype={'start_station_id': 'str', 'end_station_id': 'str',
+                            'rideable_type': 'str', 'member_casual': 'str', })
 
     # Drop rows with missing values - they tend to be outliers
     df = df.dropna()
@@ -71,107 +54,81 @@ def process_data(
     # Drop rows with duration < 0 or > 100 minutes
     df = df[(df.duration >= 0) & (df.duration <= 100)]
 
-    # Convert categorical columns to string
-    df[categorical] = df[categorical].astype('str')
-
     # Create ride start hour of day feature
     df['hour'] = df.started_at.dt.hour
-    df['year'] = df.started_at.dt.hour
+    df['year'] = df.started_at.dt.year
 
-    # Keep only columns of interest
-    df = df[categorical + numerical + [target]]
+    return df[categorical + ['hour', 'year', target] + keep]
 
+
+@task
+def combine_save_data(dfs: [pd.DataFrame], file_path: Path) -> pd.DataFrame:
+    """Combine and save data."""
+    print(f'combining and saving data to {file_path}')
+    df = pd.concat(dfs)
+    df.to_csv(file_path, index=False)
     return df
 
 
-def combine_save_data(dfs: [pd.DataFrame], file_path: Path) -> None:
-    pd.concat(dfs).to_csv(file_path, index=False)
+def get_latest_data_year_month(data_dir: Path) -> (int, int):
+    """Get latest data year and month."""
+    latest_file_name = (sorted(data_dir.glob("*.csv"))[-1]).name
+    prefix = latest_file_name.split('-')[0]
+    return int(prefix[:4]), int(prefix[4:6])
 
 
-@click.command()
-@click.option('--start_year', help='start year for modelling data', type=int)
-@click.option('--start_month', help='start month for modelling data', type=int)
-@click.option('--end_year', default=2023, help='end year for modelling data')
-@click.option('--end_month', default=5, help='end month for modelling data')
-def prepare_data_for_modelling(
-    start_year: int,
-    start_month: int,
-    end_year: int = 2023,
-    end_month: int = 5,
-):
+@flow(name="prepare and combine raw data", log_prints=True)
+def prepare_data_for_modelling():
     """Prepare data for modelling."""
 
     wandb_run = wandb.init(project=wandb_params.WANDB_PROJECT,
                            entity=wandb_params.ENTITY,
-                           job_type="upload")
+                           job_type="prepare_for_modelling")
+
+    artifact = wandb_run.use_artifact('aaalex-lit/capitalbikeshare-mlops/monthly-trip-data:latest',
+                                      type='raw_data')
+    artifact_dir = Path(artifact.download())
+
+    zip_file_path = artifact_dir / 'all_raw_data.zip'
+
+    print(f'unzipping {zip_file_path}')
+    with ZipFile(zip_file_path, 'r') as zip_ref:
+        zip_ref.extractall(artifact_dir)
+    os.remove(zip_file_path)
+
+    # hardcode start year and month for now cause before this date
+    # the data is not in the same format
+    start_year, start_month = 2020, 4
+    end_year, end_month = get_latest_data_year_month(artifact_dir)
 
     years, year_months = get_year_months(
-        start_year, start_month, end_year, end_month
-    )
+        start_year, start_month, end_year, end_month)
+
+    file_paths_to_process = []
     for year, months in zip(years, year_months):
         for month in months:
-            zip_file_name = f'{year}{month:02}-capitalbikeshare-tripdata.zip'
             file_name = f'{year}{month:02}-capitalbikeshare-tripdata.csv'
-            local_zip = download_locally(zip_file_name)
-            unzip_file(local_zip)
+            file_paths_to_process.append(artifact_dir / file_name)
 
-    artifact = wandb.Artifact(wandb_params.RAW_DATA, type='raw_data')
-    artifact.add_dir(get_data_dir() / 'raw', name='raw_data')
-    wandb_run.log_artifact(artifact)
+    dfs = process_data.map(file_paths_to_process)
 
-    dfs = [
-        process_data(file_path)
-        for file_path in Path(get_data_dir() / 'raw').glob('*.csv')
-    ]
-    processed_data_file_name = f'{start_year}{start_month:02}-{end_year}{end_month:02}-processed.csv'
+    result_prefix = f'{start_year}{start_month:02}-{end_year}{end_month:02}'
+
+    processed_data_file_name = f'{result_prefix}-processed.tar.gz'
     processed_data_path = get_data_dir() / 'processed' / processed_data_file_name
-    combine_save_data(dfs,  processed_data_path)
 
-    artifact = wandb.Artifact(wandb_params.PROCESSED_DATA, type='processed_data')
-    artifact.add_file(processed_data_path, name='processed_data')
+    all_data_df = combine_save_data(dfs,  processed_data_path, wait_for=[dfs])
+
+    artifact = wandb.Artifact(f'{result_prefix}-{wandb_params.PROCESSED_DATA}', type='processed_data')
+    artifact.add_file(processed_data_path)
+
+    # Add random sample of data to wandb table cause it has 200k row limit
+    processed_data_table = wandb.Table(dataframe=all_data_df.sample(200_000))
+    artifact.add(processed_data_table, name='processed_data_table')
+
     wandb_run.log_artifact(artifact)
     wandb_run.finish()
 
 
-def get_year_months(
-    start_year: int,
-    start_month: int,
-    end_year: int,
-    end_month: int,
-) -> ([int], [[int]]):
-    """Get list of months for each year."""
-    assert (
-        start_year <= end_year
-    ), f"start_year must be less than or equal to end_year, {start_year} > {end_year}"
-    assert (
-        start_month >= 1 and start_month <= 12
-    ), f"start_month must be between 1 and 12, not {start_month}"
-    assert (
-        end_month >= 1 and end_month <= 12
-    ), f"end_month must be between 1 and 12, not {end_month}"
-    assert (
-        start_year >= 2018
-    ), "monthly information is only available from 2018 onwards"
-    # assert end_year <= 2023, "monthly information is only available until 2023"
-    # if end_year == 2023:
-    #     assert (
-    #         end_month <= 5
-    #     ), "monthly information for modelling is only available until May 2023"
-    if start_year == end_year:
-        assert (
-            start_month <= end_month
-        ), f"start_month of the same year {start_year} must be less than or equal to end_month"
-        return [start_year], [list(range(start_month, end_month + 1))]
-    return list(range(start_year, end_year + 1)), [
-        list(range(start_month, 13)),
-        *[list(range(1, 13)) for _ in range(start_year + 1, end_year)],
-        *[list(range(1, end_month + 1))],
-    ]
-
-
 if __name__ == '__main__':
-    # start_year = 2023
-    # start_month = 1
-    # end_year = 2023
-    # end_month = 5
     prepare_data_for_modelling()

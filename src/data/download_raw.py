@@ -1,19 +1,18 @@
-import src.wandb_params as wandb_params
-from src.utils import get_data_dir
-from src.data.process import get_year_months
-
 import os
 import shutil
-from datetime import datetime, timedelta
 from pathlib import Path
+from zipfile import ZipFile
+from datetime import datetime, timedelta
+
 import pandas as pd
 import requests
-from zipfile import ZipFile
-import wandb
-from dotenv import load_dotenv, find_dotenv
+from dotenv import find_dotenv, load_dotenv
+from prefect import flow, task, get_run_logger
 from prefect.tasks import task_input_hash
-from prefect import task, flow, get_run_logger
 
+import wandb
+import src.wandb_params as wandb_params
+from src.utils import get_data_dir, get_year_months
 
 BASE_URL = 'https://s3.amazonaws.com/capitalbikeshare-data/'
 
@@ -75,7 +74,6 @@ def download_and_unzip_all_the_data() -> None:
             zip_file_names.append(zip_file_name)
     print('start downloading all the data')
     local_zips = download_locally.map(zip_file_names)
-    # local_zip = download_locally.submit(zip_file_name)
     unzip_file.map(local_zips)
     print('finished downloading all the data')
 
@@ -92,7 +90,7 @@ def download_raw_data():
 
     artifact = wandb.Artifact(wandb_params.RAW_DATA, type='raw_data')
     all_zip = zip_the_folder(wait_for=[all_downloaded])
-    artifact.add_file(Path(all_zip), name='raw_data')
+    artifact.add_file(Path(all_zip))
     print('uploading raw data artifact to wandb')
     wandb_run.log_artifact(artifact)
 

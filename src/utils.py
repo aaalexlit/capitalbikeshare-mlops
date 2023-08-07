@@ -1,5 +1,8 @@
 from pathlib import Path
 
+import joblib
+from prefect import flow, task
+
 TARGET_COL = 'duration'
 
 
@@ -9,6 +12,10 @@ def get_project_root() -> Path:
 
 def get_data_dir() -> Path:
     return get_project_root() / "data"
+
+
+def get_models_dir() -> Path:
+    return get_project_root() / "models"
 
 
 def get_categorical_features() -> [str]:
@@ -49,3 +56,15 @@ def get_year_months(
         *[list(range(1, 13)) for _ in range(start_year + 1, end_year)],
         *[list(range(1, end_month + 1))],
     ]
+
+
+@task
+def load_pickle(file_path: Path):
+    with open(file_path, "rb") as f_in:
+        return joblib.load(f_in)
+
+
+@task
+def dump_pickle(obj, file_path: Path) -> None:
+    with open(file_path, "wb") as f_out:
+        return joblib.dump(obj, f_out)

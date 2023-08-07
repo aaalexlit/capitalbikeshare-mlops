@@ -9,14 +9,11 @@ from sklearn.feature_extraction import DictVectorizer
 
 import wandb
 import src.wandb_params as wandb_params
-from src.utils import TARGET_COL, get_data_dir, get_categorical_features
+from src.utils import TARGET_COL, get_data_dir, \
+    get_categorical_features, dump_pickle
 
 load_dotenv(find_dotenv())
 
-@task
-def dump_pickle(obj, file_path: Path) -> None:
-    with open(file_path, "wb") as f_out:
-        return joblib.dump(obj, f_out)
 
 @task
 def preprocess(df: pd.DataFrame, dv: DictVectorizer, fit_dv: bool = False) -> (pd.DataFrame, DictVectorizer):
@@ -24,6 +21,7 @@ def preprocess(df: pd.DataFrame, dv: DictVectorizer, fit_dv: bool = False) -> (p
                ].to_dict(orient="records")
     X = dv.fit_transform(dicts) if fit_dv else dv.transform(dicts)
     return X, dv
+
 
 @flow(name="prepare and split into train, val, test", log_prints=True)
 def prepare_data():
@@ -79,7 +77,8 @@ def prepare_data():
     dump_pickle((X_test, y_test), dest_path / "test.pkl")
 
     prefix = f'{train_split_date.strftime("%Y%m")}-{val_split_date.strftime("%Y%m")}-{test_split_date.strftime("%Y%m")}'
-    artifact = wandb.Artifact(f'{prefix}-{wandb_params.PROCESSED_DATA}', type="splitted_data")
+    artifact = wandb.Artifact(
+        f'{prefix}-{wandb_params.PROCESSED_DATA}', type="splitted_data")
     artifact.add_dir(dest_path)
     wandb_run.log_artifact(artifact)
     wandb_run.finish()

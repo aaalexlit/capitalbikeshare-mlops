@@ -8,19 +8,19 @@ import click
 import pandas as pd
 import requests
 from dotenv import find_dotenv, load_dotenv
-from prefect import flow, task, get_run_logger
+from prefect import flow, task
 from prefect.tasks import task_input_hash
 
 import wandb
 import src.wandb_params as wandb_params
-from src.utils import get_data_dir, get_year_months
+from src.utils import get_data_dir, get_year_months, get_categorical_features, TARGET_COL
 
 load_dotenv(find_dotenv())
 
 
 @task
 def process_data(file_path: Path, categorical: [str] = None,
-                 target: str = 'duration',
+                 target: str = TARGET_COL,
                  keep: [str] = None,
                  date_columns: [str] = None,
                  ) -> pd.DataFrame:
@@ -31,12 +31,7 @@ def process_data(file_path: Path, categorical: [str] = None,
     if date_columns is None:
         date_columns = ['started_at', 'ended_at']
     if categorical is None:
-        categorical = [
-            'start_station_id',
-            'end_station_id',
-            'rideable_type',
-            'member_casual',
-        ]
+        categorical = get_categorical_features()
 
     print(f'processing {file_path}')
     df = pd.read_csv(file_path, parse_dates=date_columns,
@@ -53,6 +48,10 @@ def process_data(file_path: Path, categorical: [str] = None,
 
     # Drop rows with duration < 0 or > 100 minutes
     df = df[(df.duration >= 0) & (df.duration <= 100)]
+
+    # Drop rows with start_station_id or end_station_id that are not numbers
+    df = df[df.start_station_id.str.contains('^[0-9]*$', regex= True, na=False)]
+    df = df[df.end_station_id.str.contains('^[0-9]*$', regex= True, na=False)]
 
     # Create ride start hour of day feature
     df['hour'] = df.started_at.dt.hour
@@ -78,12 +77,12 @@ def get_latest_data_year_month(data_dir: Path) -> (int, int):
 
 
 @flow(name="prepare and combine raw data", log_prints=True)
-def prepare_data_for_modelling():
+def combine_raw_data():
     """Prepare data for modelling."""
 
     wandb_run = wandb.init(project=wandb_params.WANDB_PROJECT,
                            entity=wandb_params.ENTITY,
-                           job_type="prepare_for_modelling")
+                           job_type="prepare_and_combine")
 
     artifact = wandb_run.use_artifact('aaalex-lit/capitalbikeshare-mlops/monthly-trip-data:latest',
                                       type='raw_data')
@@ -131,4 +130,4 @@ def prepare_data_for_modelling():
 
 
 if __name__ == '__main__':
-    prepare_data_for_modelling()
+    combine_raw_data()

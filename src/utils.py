@@ -1,5 +1,7 @@
 from pathlib import Path
 
+TARGET_COL = 'duration'
+
 
 def get_project_root() -> Path:
     return Path(__file__).parent.parent
@@ -7,6 +9,15 @@ def get_project_root() -> Path:
 
 def get_data_dir() -> Path:
     return get_project_root() / "data"
+
+
+def get_categorical_features() -> [str]:
+    return [
+        'start_station_id',
+        'end_station_id',
+        'rideable_type',
+        'member_casual',
+    ]
 
 
 def get_year_months(

@@ -93,3 +93,4 @@ target/
 
 /wandb/
 /artifacts/
+/models/

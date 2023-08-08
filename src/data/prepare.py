@@ -16,7 +16,9 @@ load_dotenv(find_dotenv())
 
 
 @task
-def preprocess(df: pd.DataFrame, dv: DictVectorizer, fit_dv: bool = False) -> (pd.DataFrame, DictVectorizer):
+def preprocess(df: pd.DataFrame,
+               dv: DictVectorizer,
+               fit_dv: bool = False,) -> (pd.DataFrame, DictVectorizer):
     dicts = df[get_categorical_features() + ['hour', 'year']
                ].to_dict(orient="records")
     X = dv.fit_transform(dicts) if fit_dv else dv.transform(dicts)
@@ -31,14 +33,17 @@ def prepare_data():
                            entity=wandb_params.ENTITY,
                            job_type="prepare_and_split")
 
-    artifact = wandb_run.use_artifact('aaalex-lit/capitalbikeshare-mlops/202004-202306-processed-data:latest',
-                                      type='processed_data')
+    artifact = wandb_run.use_artifact('aaalex-lit/capitalbikeshare-mlops/202004-202306-interim-data:latest',
+                                      type='interim_data')
 
     artifact_dir = Path(artifact.download())
 
     print(f'Loading data from {artifact_dir}')
     df = pd.read_csv(
-        artifact_dir / '202004-202306-processed.tar.gz', parse_dates=['started_at'])
+        artifact_dir / '202004-202306-interim.tar.gz',
+        parse_dates=['started_at'],
+        dtype={'start_station_id': 'str', 'end_station_id': 'str',
+               'rideable_type': 'str', 'member_casual': 'str', })
 
     print('Splitting data...')
     train_split_year, train_split_month = 2023, 4
@@ -68,8 +73,7 @@ def prepare_data():
 
     print('Saving DictVectorizer and datasets')
     # Create dest_path folder unless it already exists
-    dest_path = get_data_dir() / "processed" / "splitted"
-    Path.mkdir(dest_path, exist_ok=True)
+    dest_path = get_data_dir() / "processed"
 
     dump_pickle(dv, dest_path / "dv.pkl")
     dump_pickle((X_train, y_train), dest_path / "train.pkl")
@@ -78,7 +82,7 @@ def prepare_data():
 
     prefix = f'{train_split_date.strftime("%Y%m")}-{val_split_date.strftime("%Y%m")}-{test_split_date.strftime("%Y%m")}'
     artifact = wandb.Artifact(
-        f'{prefix}-{wandb_params.PROCESSED_DATA}', type="splitted_data")
+        f'{prefix}-{wandb_params.PROCESSED_DATA}', type="processed_data")
     artifact.add_dir(dest_path)
     wandb_run.log_artifact(artifact)
     wandb_run.finish()

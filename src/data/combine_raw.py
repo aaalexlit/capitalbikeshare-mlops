@@ -113,17 +113,17 @@ def combine_raw_data():
 
     result_prefix = f'{start_year}{start_month:02}-{end_year}{end_month:02}'
 
-    processed_data_file_name = f'{result_prefix}-processed.tar.gz'
-    processed_data_path = get_data_dir() / 'processed' / processed_data_file_name
+    interim_data_file_name = f'{result_prefix}-interim.tar.gz'
+    interim_data_path = get_data_dir() / 'interim' / interim_data_file_name
 
-    all_data_df = combine_save_data(dfs,  processed_data_path, wait_for=[dfs])
+    all_data_df = combine_save_data(dfs,  interim_data_path, wait_for=[dfs])
 
-    artifact = wandb.Artifact(f'{result_prefix}-{wandb_params.PROCESSED_DATA}', type='processed_data')
-    artifact.add_file(processed_data_path)
+    artifact = wandb.Artifact(f'{result_prefix}-{wandb_params.INTERIM_DATA}', type='interim_data')
+    artifact.add_file(interim_data_path)
 
     # Add random sample of data to wandb table cause it has 200k row limit
-    processed_data_table = wandb.Table(dataframe=all_data_df.sample(200_000))
-    artifact.add(processed_data_table, name='processed_data_table')
+    interim_data_table = wandb.Table(dataframe=all_data_df.sample(200_000))
+    artifact.add(interim_data_table, name='interim_data_table')
 
     wandb_run.log_artifact(artifact)
     wandb_run.finish()

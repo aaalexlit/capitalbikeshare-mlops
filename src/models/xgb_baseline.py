@@ -17,8 +17,8 @@ from src.utils import dump_pickle, load_pickle, get_models_dir
 load_dotenv(find_dotenv())
 
 
-def convert_to_dmatrix(X: pd.DataFrame, y: np.ndarray) -> xgb.DMatrix:
-    return xgb.DMatrix(X, label=y)
+def convert_to_dmatrix(X: pd.DataFrame, y: np.ndarray, dv: DictVectorizer) -> xgb.DMatrix:
+    return xgb.DMatrix(X, label=y, feature_names=dv.get_feature_names_out())
 
 
 def calculate_rmse(booster: xgb.Booster, y_true: np.ndarray, features: xgb.DMatrix) -> float:
@@ -58,11 +58,12 @@ def train_xgboost():
                                           type='processed_data')
         artifact_dir = Path(artifact.download())
 
-        train = convert_to_dmatrix(*load_pickle(artifact_dir / 'train.pkl'))
+        dv = load_pickle(artifact_dir / 'dv.pkl')
+        train = convert_to_dmatrix(*load_pickle(artifact_dir / 'train.pkl'), dv)
         X_val, y_val = load_pickle(artifact_dir / 'val.pkl')
-        val = convert_to_dmatrix(X_val, y_val)
+        val = convert_to_dmatrix(X_val, y_val, dv)
         X_test, y_test = load_pickle(artifact_dir / 'test.pkl')
-        test = convert_to_dmatrix(X_test, y_test)
+        test = convert_to_dmatrix(X_test, y_test, dv)
 
         print("Training model...")
         booster = train_booster(xgb_params, train, val)

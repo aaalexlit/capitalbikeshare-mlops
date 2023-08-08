@@ -10,6 +10,7 @@ from sklearn.metrics import mean_squared_error
 from sklearn.feature_extraction import DictVectorizer
 
 import wandb
+from wandb.xgboost import WandbCallback
 import src.wandb_params as wandb_params
 from src.utils import dump_pickle, load_pickle, get_models_dir
 
@@ -25,12 +26,26 @@ def calculate_rmse(booster: xgb.Booster, y_true: np.ndarray, features: xgb.DMatr
     return mean_squared_error(y_true, y_pred, squared=False)
 
 
+@task(log_prints=False)
+def train_booster(params, train: xgb.DMatrix, val: xgb.DMatrix) -> xgb.Booster:
+    return xgb.train(
+        params=params,
+        dtrain=train,
+        num_boost_round=1000,
+        evals=[(val, 'validation')],
+        early_stopping_rounds=50,
+        callbacks=[WandbCallback(log_model=True)],
+        verbose_eval=False,
+    )
+
+
 @flow(name="train baseline model", log_prints=True)
 def train_xgboost():
     print("Training model...")
     xgb_params = {
-        "objective": "reg:squarederror",
-        "seed": 42
+        'objective': 'reg:squarederror',
+        'seed': 42,
+        'nthread': 4,
     }
 
     with wandb.init(project=wandb_params.WANDB_PROJECT,
@@ -40,7 +55,7 @@ def train_xgboost():
 
         print("Downloading data...")
         artifact = wandb_run.use_artifact('aaalex-lit/capitalbikeshare-mlops/202304-202305-202306-processed-data:latest',
-                                          type='splitted_data')
+                                          type='processed_data')
         artifact_dir = Path(artifact.download())
 
         train = convert_to_dmatrix(*load_pickle(artifact_dir / 'train.pkl'))
@@ -50,25 +65,13 @@ def train_xgboost():
         test = convert_to_dmatrix(X_test, y_test)
 
         print("Training model...")
+        booster = train_booster(xgb_params, train, val)
 
-        booster = xgb.train(
-            params=xgb_params,
-            dtrain=train,
-            num_boost_round=1000,
-            evals=[(val, 'validation')],
-            early_stopping_rounds=50
-        )
-
-        wandb_run.log({'validation RMSE': calculate_rmse(booster, y_val, val)})
         wandb_run.log({'test RMSE': calculate_rmse(booster, y_test, test)})
 
-        print("Saving model...")
+        print("Saving model locally...")
         model_path = get_models_dir() / 'booster.pkl'
         dump_pickle(booster, model_path)
-
-        model_artifact = wandb.Artifact('base_booster', type='model')
-        model_artifact.add_file(model_path)
-        wandb_run.log_artifact(model_artifact)
 
 
 if __name__ == "__main__":

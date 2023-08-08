@@ -29,6 +29,15 @@ WANDB_API_KEY=<your_wandb_api_key>
     ```shell
     python src/data/prepare.py
     ```
+## Modelling
+1. Baseline xgboost model
+    ```shell
+    python src/models/xgb_baseline.py
+    ```
+2. Hyperparameter tuning for xgboost model using Weights and Biases Sweeps
+    ```shell
+    python src/models/xgb_sweep.py
+    ```
 
 ---
 

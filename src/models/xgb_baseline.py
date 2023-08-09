@@ -49,12 +49,11 @@ def train_xgboost():
     }
 
     with wandb.init(project=wandb_params.WANDB_PROJECT,
-                    entity=wandb_params.ENTITY,
                     job_type="train",
                     config=xgb_params,) as wandb_run:
 
         print("Downloading data...")
-        artifact = wandb_run.use_artifact('aaalex-lit/capitalbikeshare-mlops/202304-202305-202306-processed-data:latest',
+        artifact = wandb_run.use_artifact('202304-202305-202306-processed-data:latest',
                                           type='processed_data')
         artifact_dir = Path(artifact.download())
 
@@ -68,7 +67,7 @@ def train_xgboost():
         print("Training model...")
         booster = train_booster(xgb_params, train, val)
 
-        wandb_run.log({'test RMSE': calculate_rmse(booster, y_test, test)})
+        wandb_run.log({'test-rmse': calculate_rmse(booster, y_test, test)})
 
         print("Saving model locally...")
         model_path = get_models_dir() / 'booster.pkl'

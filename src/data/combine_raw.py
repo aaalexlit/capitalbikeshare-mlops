@@ -81,10 +81,9 @@ def combine_raw_data():
     """Prepare data for modelling."""
 
     wandb_run = wandb.init(project=wandb_params.WANDB_PROJECT,
-                           entity=wandb_params.ENTITY,
                            job_type="prepare_and_combine")
 
-    artifact = wandb_run.use_artifact('aaalex-lit/capitalbikeshare-mlops/monthly-trip-data:latest',
+    artifact = wandb_run.use_artifact('monthly-trip-data:latest',
                                       type='raw_data')
     artifact_dir = Path(artifact.download())
 

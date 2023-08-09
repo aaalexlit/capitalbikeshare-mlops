@@ -83,7 +83,6 @@ def download_raw_data():
     """Download all available raw data starting from Jan 2018 up till the current date."""
 
     wandb_run = wandb.init(project=wandb_params.WANDB_PROJECT,
-                           entity=wandb_params.ENTITY,
                            job_type="upload")
 
     all_downloaded = download_and_unzip_all_the_data()

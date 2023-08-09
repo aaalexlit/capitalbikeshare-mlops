@@ -30,10 +30,9 @@ def prepare_data():
     print("Preparing data...")
 
     wandb_run = wandb.init(project=wandb_params.WANDB_PROJECT,
-                           entity=wandb_params.ENTITY,
                            job_type="prepare_and_split")
 
-    artifact = wandb_run.use_artifact('aaalex-lit/capitalbikeshare-mlops/202004-202306-interim-data:latest',
+    artifact = wandb_run.use_artifact('202004-202306-interim-data:latest',
                                       type='interim_data')
 
     artifact_dir = Path(artifact.download())

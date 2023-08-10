@@ -25,7 +25,7 @@ The project structure is inspired by the [Cookiecutter Data Science](https://dri
 # Steps to reproduce:
 
 ## General
-1. Create a python 10-based environment (I use conda)
+1. Create a python-10 based environment (I use conda)
 1. Install the dependencies from requirements.txt:
 ```shell
 pip install -r requirements.txt

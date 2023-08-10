@@ -1,6 +1,11 @@
 from pathlib import Path
 
 import joblib
+import xgboost as xgb
+import numpy as np 
+import pandas as pd
+from sklearn.metrics import mean_squared_error
+from sklearn.feature_extraction import DictVectorizer
 from prefect import flow, task
 
 TARGET_COL = 'duration'
@@ -68,3 +73,12 @@ def load_pickle(file_path: Path):
 def dump_pickle(obj, file_path: Path) -> None:
     with open(file_path, "wb") as f_out:
         return joblib.dump(obj, f_out)
+
+
+def calculate_rmse(booster: xgb.Booster, y_true: np.ndarray, features: xgb.DMatrix) -> float:
+    y_pred = booster.predict(features)
+    return mean_squared_error(y_true, y_pred, squared=False)
+
+
+def convert_to_dmatrix(X: pd.DataFrame, y: np.ndarray, dv: DictVectorizer) -> xgb.DMatrix:
+    return xgb.DMatrix(X, label=y, feature_names=dv.get_feature_names_out())

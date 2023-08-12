@@ -1,11 +1,11 @@
 ## The purpose of the project
 
-The aim of this project is to build a full end-to-end MLOps project.  
+The aim of this project is to build a full end-to-end ML project.
 **Important:** The project main focus of the project is to show the MLOps flow and not to build the best model.
 
-The underlying ML task is to predict bike ride duration given the start and end station, start time, bike type, and type of membership. 
+The underlying ML task is to predict bike ride duration given the start and end station, start time, bike type, and type of membership.
 ## The data
-The data is provided by [Capital Bikeshare](https://www.capitalbikeshare.com/system-data) and contains information about bike rides in Washington DC. 
+The data is provided by [Capital Bikeshare](https://www.capitalbikeshare.com/system-data) and contains information about bike rides in Washington DC.
 Downloadable files are available on the following link https://s3.amazonaws.com/capitalbikeshare-data/index.html
 The data used for the project is from April 2020 to Today (the scripts will get the new data automatically).
 The reason is that in April 2020 the data format changed and the scripts are not compatible with the old format.
@@ -18,6 +18,7 @@ The reason is that in April 2020 the data format changed and the scripts are not
 1. Modelling
     1. Baseline model
     1. Hyperparameter tuning using Weights and Biases Sweeps
+    1. Training the model with the best hyperparameters
 
 ## The project structure
 The project structure is inspired by the [Cookiecutter Data Science](https://drivendata.github.io/cookiecutter-data-science/) template (but not directly created from it).

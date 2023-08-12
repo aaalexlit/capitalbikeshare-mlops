@@ -1,14 +1,19 @@
 from pathlib import Path
 
-import joblib
 import xgboost as xgb
 from dotenv import find_dotenv, load_dotenv
 from prefect import flow, task
+from wandb.xgboost import WandbCallback
 
 import wandb
-from wandb.xgboost import WandbCallback
-import src.wandb_params as wandb_params
-from src.utils import dump_pickle, load_pickle, get_models_dir, calculate_rmse, convert_to_dmatrix
+from src import wandb_params
+from src.utils import (
+    dump_pickle,
+    load_pickle,
+    calculate_rmse,
+    get_models_dir,
+    convert_to_dmatrix,
+)
 
 load_dotenv(find_dotenv())
 
@@ -35,18 +40,19 @@ def train_xgboost():
         'nthread': 4,
     }
 
-    with wandb.init(project=wandb_params.WANDB_PROJECT,
-                    job_type="train",
-                    config=xgb_params,) as wandb_run:
-
+    with wandb.init(
+        project=wandb_params.WANDB_PROJECT,
+        job_type="train",
+        config=xgb_params,
+    ) as wandb_run:
         print("Downloading data...")
-        artifact = wandb_run.use_artifact('202304-202305-202306-processed-data:latest',
-                                          type='processed_data')
+        artifact = wandb_run.use_artifact(
+            '202304-202305-202306-processed-data:latest', type='processed_data'
+        )
         artifact_dir = Path(artifact.download())
 
         dv = load_pickle(artifact_dir / 'dv.pkl')
-        train = convert_to_dmatrix(
-            *load_pickle(artifact_dir / 'train.pkl'), dv)
+        train = convert_to_dmatrix(*load_pickle(artifact_dir / 'train.pkl'), dv)
         X_val, y_val = load_pickle(artifact_dir / 'val.pkl')
         val = convert_to_dmatrix(X_val, y_val, dv)
         X_test, y_test = load_pickle(artifact_dir / 'test.pkl')

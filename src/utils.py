@@ -1,12 +1,12 @@
 from pathlib import Path
 
+import numpy as np
 import joblib
-import xgboost as xgb
-import numpy as np 
 import pandas as pd
+import xgboost as xgb
+from prefect import task
 from sklearn.metrics import mean_squared_error
 from sklearn.feature_extraction import DictVectorizer
-from prefect import flow, task
 
 TARGET_COL = 'duration'
 
@@ -43,10 +43,10 @@ def get_year_months(
         start_year <= end_year
     ), f"start_year must be less than or equal to end_year, {start_year} > {end_year}"
     assert (
-        start_month >= 1 and start_month <= 12
+        1 <= start_month <= 12
     ), f"start_month must be between 1 and 12, not {start_month}"
     assert (
-        end_month >= 1 and end_month <= 12
+        1 <= end_month <= 12
     ), f"end_month must be between 1 and 12, not {end_month}"
     assert (
         start_year >= 2018
@@ -75,10 +75,14 @@ def dump_pickle(obj, file_path: Path) -> None:
         return joblib.dump(obj, f_out)
 
 
-def calculate_rmse(booster: xgb.Booster, y_true: np.ndarray, features: xgb.DMatrix) -> float:
+def calculate_rmse(
+    booster: xgb.Booster, y_true: np.ndarray, features: xgb.DMatrix
+) -> float:
     y_pred = booster.predict(features)
     return mean_squared_error(y_true, y_pred, squared=False)
 
 
-def convert_to_dmatrix(X: pd.DataFrame, y: np.ndarray, dv: DictVectorizer) -> xgb.DMatrix:
+def convert_to_dmatrix(
+    X: pd.DataFrame, y: np.ndarray, dv: DictVectorizer
+) -> xgb.DMatrix:
     return xgb.DMatrix(X, label=y, feature_names=dv.get_feature_names_out())

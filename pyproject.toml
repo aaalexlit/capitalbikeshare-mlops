@@ -1,3 +1,13 @@
+[tool.pylint.messages_control]
+
+disable = [
+    "missing-function-docstring",
+    "missing-class-docstring",
+    "missing-module-docstring",
+    "invalid-name",
+    "too-few-public-methods"
+]
+
 [tool.black]
 line-length = 80
 target-verion = ['py310']

@@ -1,29 +1,32 @@
 import os
-import shutil
-import logging
 from pathlib import Path
 from zipfile import ZipFile
 
-import click
 import pandas as pd
-import requests
 from dotenv import find_dotenv, load_dotenv
 from prefect import flow, task
-from prefect.tasks import task_input_hash
 
 import wandb
-import src.wandb_params as wandb_params
-from src.utils import get_data_dir, get_year_months, get_categorical_features, TARGET_COL
+from src import wandb_params
+from src.utils import (
+    TARGET_COL,
+    get_data_dir,
+    feature_dtypes,
+    get_year_months,
+    get_categorical_features,
+)
 
 load_dotenv(find_dotenv())
 
 
 @task
-def process_data(file_path: Path, categorical: [str] = None,
-                 target: str = TARGET_COL,
-                 keep: [str] = None,
-                 date_columns: [str] = None,
-                 ) -> pd.DataFrame:
+def process_data(
+    file_path: Path,
+    categorical: [str] = None,
+    target: str = TARGET_COL,
+    keep: [str] = None,
+    date_columns: [str] = None,
+) -> pd.DataFrame:
     """Process data for modeling."""
 
     if keep is None:
@@ -34,10 +37,12 @@ def process_data(file_path: Path, categorical: [str] = None,
         categorical = get_categorical_features()
 
     print(f'processing {file_path}')
-    df = pd.read_csv(file_path, parse_dates=date_columns,
-                     usecols=categorical + date_columns,
-                     dtype={'start_station_id': 'str', 'end_station_id': 'str',
-                            'rideable_type': 'str', 'member_casual': 'str', })
+    df = pd.read_csv(
+        file_path,
+        parse_dates=date_columns,
+        usecols=categorical + date_columns,
+        dtype=feature_dtypes(),
+    )
 
     # Drop rows with missing values - they tend to be outliers
     df = df.dropna()
@@ -50,8 +55,8 @@ def process_data(file_path: Path, categorical: [str] = None,
     df = df[(df.duration >= 0) & (df.duration <= 100)]
 
     # Drop rows with start_station_id or end_station_id that are not numbers
-    df = df[df.start_station_id.str.contains('^[0-9]*$', regex= True, na=False)]
-    df = df[df.end_station_id.str.contains('^[0-9]*$', regex= True, na=False)]
+    df = df[df.start_station_id.str.contains('^[0-9]*$', regex=True, na=False)]
+    df = df[df.end_station_id.str.contains('^[0-9]*$', regex=True, na=False)]
 
     # Create ride start hour of day feature
     df['hour'] = df.started_at.dt.hour
@@ -76,56 +81,82 @@ def get_latest_data_year_month(data_dir: Path) -> (int, int):
     return int(prefix[:4]), int(prefix[4:6])
 
 
-@flow(name="prepare and combine raw data", log_prints=True)
-def combine_raw_data():
-    """Prepare data for modelling."""
-
-    wandb_run = wandb.init(project=wandb_params.WANDB_PROJECT,
-                           job_type="prepare_and_combine")
-
-    artifact = wandb_run.use_artifact('monthly-trip-data:latest',
-                                      type='raw_data')
-    artifact_dir = Path(artifact.download())
-
+@task
+def extract_zip(artifact_dir: Path) -> None:
     zip_file_path = artifact_dir / 'all_raw_data.zip'
-
     print(f'unzipping {zip_file_path}')
     with ZipFile(zip_file_path, 'r') as zip_ref:
         zip_ref.extractall(artifact_dir)
     os.remove(zip_file_path)
 
-    # hardcode start year and month for now cause before this date
-    # the data is not in the same format
-    start_year, start_month = 2020, 4
-    end_year, end_month = get_latest_data_year_month(artifact_dir)
 
+def get_file_paths_to_process(
+    start_year: int,
+    start_month: int,
+    end_year: int,
+    end_month: int,
+    artifact_dir: Path,
+) -> [Path]:
     years, year_months = get_year_months(
-        start_year, start_month, end_year, end_month)
+        start_year, start_month, end_year, end_month
+    )
 
     file_paths_to_process = []
     for year, months in zip(years, year_months):
         for month in months:
             file_name = f'{year}{month:02}-capitalbikeshare-tripdata.csv'
             file_paths_to_process.append(artifact_dir / file_name)
+    return file_paths_to_process
 
-    dfs = process_data.map(file_paths_to_process)
 
-    result_prefix = f'{start_year}{start_month:02}-{end_year}{end_month:02}'
+@flow(name="prepare and combine raw data", log_prints=True)
+def combine_raw_data():
+    """Prepare data for modelling."""
 
-    interim_data_file_name = f'{result_prefix}-interim.tar.gz'
-    interim_data_path = get_data_dir() / 'interim' / interim_data_file_name
+    with wandb.init(
+        project=wandb_params.WANDB_PROJECT, job_type="prepare_and_combine"
+    ) as wandb_run:
+        artifact_dir = Path(
+            wandb_run.use_artifact(
+                'monthly-trip-data:latest', type='raw_data'
+            ).download()
+        )
 
-    all_data_df = combine_save_data(dfs,  interim_data_path, wait_for=[dfs])
+        extract_zip(artifact_dir)
 
-    artifact = wandb.Artifact(f'{result_prefix}-{wandb_params.INTERIM_DATA}', type='interim_data')
-    artifact.add_file(interim_data_path)
+        # hardcode start year and month for now cause before this date
+        # the data is not in the same format
+        start_year, start_month = 2020, 4
+        end_year, end_month = get_latest_data_year_month(artifact_dir)
 
-    # Add random sample of data to wandb table cause it has 200k row limit
-    interim_data_table = wandb.Table(dataframe=all_data_df.sample(200_000))
-    artifact.add(interim_data_table, name='interim_data_table')
+        file_paths_to_process = get_file_paths_to_process(
+            start_year,
+            start_month,
+            end_year,
+            end_month,
+            artifact_dir,
+        )
 
-    wandb_run.log_artifact(artifact)
-    wandb_run.finish()
+        dfs = process_data.map(file_paths_to_process)
+
+        result_prefix = f'{start_year}{start_month:02}-{end_year}{end_month:02}'
+
+        interim_data_path = (
+            get_data_dir() / 'interim' / f'{result_prefix}-interim.tar.gz'
+        )
+
+        all_data_df = combine_save_data(dfs, interim_data_path, wait_for=[dfs])
+
+        artifact = wandb.Artifact(
+            f'{result_prefix}-{wandb_params.INTERIM_DATA}', type='interim_data'
+        )
+        artifact.add_file(interim_data_path)
+
+        # Add random sample of data to wandb table cause it has 200k row limit
+        interim_data_table = wandb.Table(dataframe=all_data_df.sample(200_000))
+        artifact.add(interim_data_table, name='interim_data_table')
+
+        wandb_run.log_artifact(artifact)
 
 
 if __name__ == '__main__':

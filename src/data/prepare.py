@@ -1,90 +1,122 @@
 from pathlib import Path
 from datetime import date
 
-import joblib
+import numpy as np
+import scipy as sp
 import pandas as pd
 from dotenv import find_dotenv, load_dotenv
 from prefect import flow, task
 from sklearn.feature_extraction import DictVectorizer
 
 import wandb
-import src.wandb_params as wandb_params
-from src.utils import TARGET_COL, get_data_dir, \
-    get_categorical_features, dump_pickle
+from src import wandb_params
+from src.utils import (
+    TARGET_COL,
+    dump_pickle,
+    get_data_dir,
+    feature_dtypes,
+    get_categorical_features,
+)
 
 load_dotenv(find_dotenv())
 
 
-@task
-def preprocess(df: pd.DataFrame,
-               dv: DictVectorizer,
-               fit_dv: bool = False,) -> (pd.DataFrame, DictVectorizer):
-    dicts = df[get_categorical_features() + ['hour', 'year']
-               ].to_dict(orient="records")
+# pylint: disable=too-many-locals
+def preprocess(
+    df: pd.DataFrame,
+    dv: DictVectorizer,
+    fit_dv: bool = False,
+) -> (sp.sparse.csr_matrix, DictVectorizer):
+    if fit_dv:
+        print("Fitting DictVectorizer...")
+    else:
+        print("Transforming data...")
+    dicts = df[get_categorical_features() + ['hour', 'year']].to_dict(
+        orient="records"
+    )
     X = dv.fit_transform(dicts) if fit_dv else dv.transform(dicts)
     return X, dv
 
 
+@task
+def dataset_split(
+    df: pd.DataFrame,
+    end_split_date: date,
+    dv: DictVectorizer,
+    fit_dv: bool = False,
+    start_split_date: date = date(1970, 1, 1),
+) -> (sp.sparse.csr_matrix, np.ndarray, DictVectorizer):
+    print(
+        f"Extract split from {start_split_date} to {end_split_date} and target {TARGET_COL}"
+    )
+    X = df[
+        (df.started_at.dt.date >= start_split_date)
+        & (df.started_at.dt.date < end_split_date)
+    ]
+    y = X[TARGET_COL].values
+    X, dv = preprocess(X, dv, fit_dv=fit_dv)
+    return X, y, dv
+
+
 @flow(name="prepare and split into train, val, test", log_prints=True)
-def prepare_data():
+# pylint: disable=too-many-arguments
+def prepare_data(
+    train_split_year: int = 2023,
+    train_split_month: int = 4,
+    val_split_year: int = 2023,
+    val_split_month: int = 5,
+    test_split_year: int = 2023,
+    test_split_month: int = 6,
+):
     print("Preparing data...")
 
-    wandb_run = wandb.init(project=wandb_params.WANDB_PROJECT,
-                           job_type="prepare_and_split")
+    with wandb.init(
+        project=wandb_params.WANDB_PROJECT, job_type="prepare_and_split"
+    ) as wandb_run:
+        artifact_dir = Path(
+            wandb_run.use_artifact(
+                '202004-202306-interim-data:latest', type='interim_data'
+            ).download()
+        )
 
-    artifact = wandb_run.use_artifact('202004-202306-interim-data:latest',
-                                      type='interim_data')
+        print(f'Loading data from {artifact_dir}')
+        df = pd.read_csv(
+            artifact_dir / '202004-202306-interim.tar.gz',
+            parse_dates=['started_at'],
+            dtype=feature_dtypes(),
+        )
 
-    artifact_dir = Path(artifact.download())
+        train_split_date = date(train_split_year, train_split_month, 1)
+        val_split_date = date(val_split_year, val_split_month, 1)
+        test_split_date = date(test_split_year, test_split_month, 1)
 
-    print(f'Loading data from {artifact_dir}')
-    df = pd.read_csv(
-        artifact_dir / '202004-202306-interim.tar.gz',
-        parse_dates=['started_at'],
-        dtype={'start_station_id': 'str', 'end_station_id': 'str',
-               'rideable_type': 'str', 'member_casual': 'str', })
+        dv = DictVectorizer()
+        X_train, y_train, dv = dataset_split(
+            df, train_split_date, dv, fit_dv=True
+        )
+        X_val, y_val, _ = dataset_split(
+            df, val_split_date, dv, start_split_date=train_split_date
+        )
+        X_test, y_test, _ = dataset_split(
+            df, test_split_date, dv, start_split_date=val_split_date
+        )
 
-    print('Splitting data...')
-    train_split_year, train_split_month = 2023, 4
-    val_split_year, val_split_month = 2023, 5
-    test_split_year, test_split_month = 2023, 6
+        print('Saving DictVectorizer and datasets')
+        # Create dest_path folder unless it already exists
+        dest_path = get_data_dir() / "processed"
 
-    train_split_date = date(train_split_year, train_split_month, 1)
-    val_split_date = date(val_split_year, val_split_month, 1)
-    test_split_date = date(test_split_year, test_split_month, 1)
+        dump_pickle(dv, dest_path / "dv.pkl")
+        dump_pickle((X_train, y_train), dest_path / "train.pkl")
+        dump_pickle((X_val, y_val), dest_path / "val.pkl")
+        dump_pickle((X_test, y_test), dest_path / "test.pkl")
 
-    df_train = df[df.started_at.dt.date < train_split_date]
-    df_val = df[(df.started_at.dt.date >= train_split_date)
-                & (df.started_at.dt.date < val_split_date)]
-    df_test = df[(df.started_at.dt.date >= val_split_date) &
-                 (df.started_at.dt.date < test_split_date)]
-
-    print(f'Extracting target column "{TARGET_COL}"')
-    y_train = df_train[TARGET_COL].values
-    y_val = df_val[TARGET_COL].values
-    y_test = df_test[TARGET_COL].values
-
-    print('Fitting the DictVectorizer and preprocessing data')
-    dv = DictVectorizer()
-    X_train, dv = preprocess(df_train, dv, fit_dv=True)
-    X_val, _ = preprocess(df_val, dv, fit_dv=False)
-    X_test, _ = preprocess(df_test, dv, fit_dv=False)
-
-    print('Saving DictVectorizer and datasets')
-    # Create dest_path folder unless it already exists
-    dest_path = get_data_dir() / "processed"
-
-    dump_pickle(dv, dest_path / "dv.pkl")
-    dump_pickle((X_train, y_train), dest_path / "train.pkl")
-    dump_pickle((X_val, y_val), dest_path / "val.pkl")
-    dump_pickle((X_test, y_test), dest_path / "test.pkl")
-
-    prefix = f'{train_split_date.strftime("%Y%m")}-{val_split_date.strftime("%Y%m")}-{test_split_date.strftime("%Y%m")}'
-    artifact = wandb.Artifact(
-        f'{prefix}-{wandb_params.PROCESSED_DATA}', type="processed_data")
-    artifact.add_dir(dest_path)
-    wandb_run.log_artifact(artifact)
-    wandb_run.finish()
+        # pylint: disable=line-too-long
+        prefix = f'{train_split_date.strftime("%Y%m")}-{val_split_date.strftime("%Y%m")}-{test_split_date.strftime("%Y%m")}'
+        artifact = wandb.Artifact(
+            f'{prefix}-{wandb_params.PROCESSED_DATA}', type="processed_data"
+        )
+        artifact.add_dir(dest_path)
+        wandb_run.log_artifact(artifact)
 
     print("Data prepared!")
 

@@ -32,6 +32,15 @@ def get_categorical_features() -> [str]:
     ]
 
 
+def feature_dtypes() -> dict:
+    return {
+        'start_station_id': 'str',
+        'end_station_id': 'str',
+        'rideable_type': 'str',
+        'member_casual': 'str',
+    }
+
+
 def get_year_months(
     start_year: int,
     start_month: int,

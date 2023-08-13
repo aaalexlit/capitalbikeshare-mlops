@@ -35,3 +35,12 @@ repos:
             "-sn", # Don't display the score
             "--recursive=y",
           ]
+  -   repo: local
+      hooks:
+      -   id: pytest-check
+          types: [python]
+          name: pytest-check
+          entry: python -m pytest -v tests/
+          language: system
+          pass_filenames: false
+          always_run: true

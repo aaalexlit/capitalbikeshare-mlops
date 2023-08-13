@@ -7,6 +7,9 @@ else
 HAS_CONDA=True
 endif
 
+test:
+	pytest tests/
+
 quality_checks:
 	isort .
 	black .

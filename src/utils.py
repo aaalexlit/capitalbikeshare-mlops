@@ -26,7 +26,6 @@ def get_models_dir() -> Path:
 def get_categorical_features() -> [str]:
     return [
         'start_station_id',
-        'end_station_id',
         'rideable_type',
         'member_casual',
     ]
@@ -35,7 +34,6 @@ def get_categorical_features() -> [str]:
 def feature_dtypes() -> dict:
     return {
         'start_station_id': 'str',
-        'end_station_id': 'str',
         'rideable_type': 'str',
         'member_casual': 'str',
     }

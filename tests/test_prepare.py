@@ -13,7 +13,6 @@ def test_preprocess():
     input_dicts = [
         {
             'start_station_id': '31239',
-            'end_station_id': '31251',
             'rideable_type': 'docked_bike',
             'member_casual': 'casual',
             'hour': 17,
@@ -23,7 +22,6 @@ def test_preprocess():
         },
         {
             'start_station_id': '31205',
-            'end_station_id': '31224',
             'rideable_type': 'docked_bike',
             'member_casual': 'member',
             'hour': 7,
@@ -33,7 +31,6 @@ def test_preprocess():
         },
         {
             'start_station_id': '31313',
-            'end_station_id': '31313',
             'rideable_type': 'docked_bike',
             'member_casual': 'casual',
             'hour': 17,
@@ -43,9 +40,6 @@ def test_preprocess():
         },
     ]
     expected_feature_names = [
-        'end_station_id=31224',
-        'end_station_id=31251',
-        'end_station_id=31313',
         'hour',
         'member_casual=casual',
         'member_casual=member',
@@ -58,4 +52,4 @@ def test_preprocess():
     df = pd.DataFrame(input_dicts)
     X, dv = prepare.preprocess(df, DictVectorizer(), fit_dv=True)
     assert dv.feature_names_ == expected_feature_names
-    assert X.shape == (3, 11)
+    assert X.shape == (3, 8)

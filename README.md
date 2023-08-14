@@ -3,7 +3,7 @@
 The aim of this project is to build a full end-to-end ML project.
 **Important:** The project main focus of the project is to show the MLOps flow and not to build the best model.
 
-The underlying ML task is to predict bike ride duration given the start and end station, start time, bike type, and type of membership.
+The underlying ML task is to predict bike ride duration given the start station, start time, bike type, and type of membership.
 ## The data
 The data is provided by [Capital Bikeshare](https://www.capitalbikeshare.com/system-data) and contains information about bike rides in Washington DC.
 Downloadable files are available on the following link https://s3.amazonaws.com/capitalbikeshare-data/index.html

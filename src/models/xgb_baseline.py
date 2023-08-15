@@ -26,7 +26,7 @@ def train_booster(params, train: xgb.DMatrix, val: xgb.DMatrix) -> xgb.Booster:
         num_boost_round=1000,
         evals=[(val, 'validation')],
         early_stopping_rounds=50,
-        callbacks=[WandbCallback(log_model=True)],
+        callbacks=[WandbCallback()],
         verbose_eval=False,
     )
 
@@ -52,16 +52,18 @@ def train_xgboost():
         artifact_dir = Path(artifact.download())
 
         dv = load_pickle(artifact_dir / 'dv.pkl')
-        train = convert_to_dmatrix(*load_pickle(artifact_dir / 'train.pkl'), dv)
+        feature_names = dv.get_feature_names_out()
+        train = convert_to_dmatrix(
+            *load_pickle(artifact_dir / 'train.pkl'), feature_names
+        )
         X_val, y_val = load_pickle(artifact_dir / 'val.pkl')
-        val = convert_to_dmatrix(X_val, y_val, dv)
+        val = convert_to_dmatrix(X_val, y_val, feature_names)
         X_test, y_test = load_pickle(artifact_dir / 'test.pkl')
-        test = convert_to_dmatrix(X_test, y_test, dv)
 
         print("Training model...")
         booster = train_booster(xgb_params, train, val)
 
-        wandb_run.log({'test-rmse': calculate_rmse(booster, y_test, test)})
+        wandb_run.log({'test-rmse': calculate_rmse(booster, y_test, X_test)})
 
         print("Saving model locally...")
         model_path = get_models_dir() / 'booster.pkl'

@@ -56,11 +56,14 @@ def train_xgb():
     artifact_dir = Path(artifact.download())
 
     dv = load_pickle.fn(artifact_dir / 'dv.pkl')
-    train = convert_to_dmatrix(*load_pickle.fn(artifact_dir / 'train.pkl'), dv)
+    feature_names = dv.get_feature_names_out()
+
+    train = convert_to_dmatrix(
+        *load_pickle.fn(artifact_dir / 'train.pkl'), feature_names
+    )
     X_val, y_val = load_pickle.fn(artifact_dir / 'val.pkl')
-    val = convert_to_dmatrix(X_val, y_val, dv)
+    val = convert_to_dmatrix(X_val, y_val, feature_names)
     X_test, y_test = load_pickle.fn(artifact_dir / 'test.pkl')
-    test = convert_to_dmatrix(X_test, y_test, dv)
 
     print("Training model...")
     optimized_hyperparams = {
@@ -80,7 +83,7 @@ def train_xgb():
         verbose_eval=50,
     )
 
-    wandb.log({'test-rmse': calculate_rmse(booster, y_test, test)})
+    wandb.log({'test-rmse': calculate_rmse(booster, y_test, X_test)})
 
 
 @flow(name="optimize XGB hyperparameters using wandb sweeps", log_prints=True)

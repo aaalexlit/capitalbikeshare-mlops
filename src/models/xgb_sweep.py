@@ -76,7 +76,7 @@ def train_xgb():
         num_boost_round=500,
         evals=[(val, 'validation')],
         early_stopping_rounds=50,
-        callbacks=[WandbCallback(log_model=True)],
+        callbacks=[WandbCallback()],
         verbose_eval=50,
     )
 

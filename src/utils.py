@@ -70,7 +70,7 @@ def get_year_months(
 
 
 @task
-def load_pickle(file_path: Path):
+def load_pickle(file_path: Path) -> object:
     with open(file_path, "rb") as f_in:
         return joblib.load(f_in)
 
@@ -78,13 +78,17 @@ def load_pickle(file_path: Path):
 @task
 def dump_pickle(obj, file_path: Path) -> None:
     with open(file_path, "wb") as f_out:
-        return joblib.dump(obj, f_out)
+        joblib.dump(obj, f_out)
 
 
 def calculate_rmse(
-    booster: xgb.Booster, y_true: np.ndarray, X: sp.sparse.csr_matrix
+    booster: xgb.Booster,
+    y_true: np.ndarray,
+    X: sp.sparse.csr_matrix,
+    convert: bool = True,
 ) -> float:
-    y_pred = booster.predict(convert_to_dmatrix(X), validate_features=False)
+    X = convert_to_dmatrix(X) if convert else X
+    y_pred = booster.predict(X, validate_features=False)
     return mean_squared_error(y_true, y_pred, squared=False)
 
 

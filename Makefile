@@ -11,18 +11,17 @@ ENV_DIR=$(shell conda info --base)
 MY_ENV_DIR=$(ENV_DIR)/envs/$(PROJECT_NAME)
 endif
 
-test: export_path activate_environment
-	pytest tests/
+test: activate_environment
+	export PYTHONPATH="${PYTHONPATH}:$(shell pwd)"
+	$(PYTHON_INTERPRETER) -m pytest tests/
 
-quality_checks: export_path activate_environment
+quality_checks: activate_environment
+	export PYTHONPATH="${PYTHONPATH}:$(shell pwd)"
 	isort .
 	black .
 	pylint --recursive=y .
 
-export_path:
-	export PYTHONPATH="${PYTHONPATH}:$(shell pwd)"
-
-setup: create_environment requirements export_path
+setup: create_environment requirements
 	conda run -n $(PROJECT_NAME) pre-commit install
 
 ## Set up python interpreter environment

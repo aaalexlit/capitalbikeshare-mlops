@@ -1,3 +1,5 @@
 {
-  "download raw data": "src/data/download_raw.py:download_raw_data"
+  "download raw data": "src/data/download_raw.py:download_raw_data",
+  "prepare and combine raw data": "src/data/combine_raw.py:combine_raw_data",
+  "prepare and split into train, val, test": "src/data/prepare.py:prepare_data"
 }

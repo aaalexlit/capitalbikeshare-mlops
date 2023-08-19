@@ -1,4 +1,4 @@
-To be able to run the project through prefect deployments:
+# Run the project through prefect deployments
 
 Login to prefect cloud:
 
@@ -22,4 +22,10 @@ Run the following command in this new terminal to start the worker:
 
 ```shell
 prefect worker start --pool capitalbikeshare-mlops
+```
+
+Create all the deployments
+
+```shell
+prefect deploy --all
 ```

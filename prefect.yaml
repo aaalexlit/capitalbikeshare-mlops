@@ -32,3 +32,13 @@ deployments:
     description: "Download raw data and create its wandb artifact"
     entrypoint: src/data/download_raw.py:download_raw_data
     work_pool: *capitalbikeshare_workpool
+  - name: capitalbikeshare-mlops-combine-raw
+    tags: ["dataflow", "capitalbikeshare-mlops"]
+    description: "Combine monthly raw data into one file that can be later splitted by date"
+    entrypoint: src/data/combine_raw.py:combine_raw_data
+    work_pool: *capitalbikeshare_workpool
+  - name: capitalbikeshare-mlops-prepare
+    tags: ["dataflow", "capitalbikeshare-mlops"]
+    description: "Add features and split into train-val-test"
+    entrypoint: src/data/prepare.py:prepare_data
+    work_pool: *capitalbikeshare_workpool

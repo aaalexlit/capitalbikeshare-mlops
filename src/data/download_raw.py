@@ -11,7 +11,7 @@ from prefect.tasks import task_input_hash
 
 import wandb
 from src import wandb_params
-from src.utils import get_data_dir, get_year_months
+from src.utils import get_data_dir, get_year_months, load_wandb_api_key
 
 BASE_URL = 'https://s3.amazonaws.com/capitalbikeshare-data/'
 
@@ -83,7 +83,8 @@ def download_and_unzip_all_the_data() -> None:
 @flow(name="download raw data", log_prints=True)
 def download_raw_data():
     """Download all available raw data starting from Jan 2018 up till the current date."""
-
+    if not os.getenv('WANDB_API_KEY'):
+        wandb.login(key=load_wandb_api_key())
     wandb_run = wandb.init(
         project=wandb_params.WANDB_PROJECT, job_type="upload"
     )

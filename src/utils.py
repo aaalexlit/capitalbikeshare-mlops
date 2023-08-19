@@ -6,6 +6,7 @@ import joblib
 import xgboost as xgb
 from prefect import task
 from sklearn.metrics import mean_squared_error
+from prefect.blocks.system import Secret  # pylint: disable=ungrouped-imports
 
 TARGET_COL = 'duration'
 
@@ -81,6 +82,10 @@ def load_pickle(file_path: Path) -> object:
 def dump_pickle(obj, file_path: Path) -> None:
     with open(file_path, "wb") as f_out:
         joblib.dump(obj, f_out)
+
+
+def load_wandb_api_key():
+    return Secret.load('wandb-api-key').get()
 
 
 def calculate_rmse(

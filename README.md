@@ -1,13 +1,20 @@
-## The purpose of the project
+# The purpose of the project
 
 The aim of this project is to build a full end-to-end ML project.
 **Important:** The project main focus of the project is to show the MLOps flow and not to build the best model.
 
 The underlying ML task is to predict bike ride duration given the start and end station, start time, bike type, and type of membership.
 
-### Potential use case is the following:
+## Potential use case is the following:
 
-A customer takes a bike from a station and wants to know how long it will take to get to the destination station. They enter the destination station and the rest of the features are logged automatically. The request is sent to the web service that returns the predicted duration and the customer can decide if they want to take the bike or not.
+A customer takes a bike from a station and wants to know how long it will take to get to the destination station. They enter the destination station and the rest of the features are logged automatically. The request is sent to the [web service](https://github.com/aaalexlit/capitalbikeshare-service) that returns the predicted duration and the customer can decide if they want to take the bike or not.
+
+# Project structure
+
+The project consists of 3 repos
+1. [This repo](https://github.com/aaalexlit/capitalbikeshare-mlops) - contains the code for the data preparation, model training, and registering the model in the model registry
+1. [The web service repo](https://github.com/aaalexlit/capitalbikeshare-service) - contains the code for the web service that serves the model
+1. [The web service infra repo](https://github.com/aaalexlit/capitalbikeshare-service-terraform) - contains IAC code for the web service infrastructure created with Terraform
 ## The data
 The data is provided by [Capital Bikeshare](https://www.capitalbikeshare.com/system-data) and contains information about bike rides in Washington DC.
 Downloadable files are available on the following link https://s3.amazonaws.com/capitalbikeshare-data/index.html

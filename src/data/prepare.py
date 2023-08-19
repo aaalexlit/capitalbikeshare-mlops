@@ -59,6 +59,12 @@ def dataset_split(
     return X, y, dv
 
 
+# to make preparation parametrized
+# @click.command()
+# @click.option('--start_year', help='start year for modelling data', type=int)
+# @click.option('--start_month', help='start month for modelling data', type=int)
+# @click.option('--end_year', default=2023, help='end year for modelling data')
+# @click.option('--end_month', default=5, help='end month for modelling data')
 @flow(name="prepare and split into train, val, test", log_prints=True)
 # pylint: disable=too-many-arguments
 def prepare_data(

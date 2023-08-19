@@ -1,0 +1,34 @@
+# Welcome to your prefect.yaml file! You can you this file for storing and managing
+# configuration for deploying your flows. We recommend committing this file to source
+# control along with your flow code.
+
+# Generic metadata about this project
+name: capitalbikeshare-mlops
+prefect-version: 2.11.1
+
+# build section allows you to manage and build docker images
+build: null
+
+# push section allows you to manage if and how this project is uploaded to remote locations
+push: null
+
+# pull section allows you to provide instructions for cloning this project in remote locations
+pull:
+  - prefect.deployments.steps.git_clone:
+      repository: git@github.com:aaalexlit/capitalbikeshare-mlops.git
+      branch: main
+      access_token: null
+
+definitions:
+  work_pools:
+    capitalbikeshare_workpool: &capitalbikeshare_workpool
+      name: capitalbikeshare-mlops
+      work_queue_name: default
+
+# the deployments section allows you to provide configuration for deploying flows
+deployments:
+  - name: capitalbikeshare-mlops-download-raw
+    tags: ["dataflow", "capitalbikeshare-mlops"]
+    description: "Download raw data and create its wandb artifact"
+    entrypoint: src/data/download_raw.py:download_raw_data
+    work_pool: *capitalbikeshare_workpool

@@ -2,12 +2,11 @@ import os
 import shutil
 from pathlib import Path
 from zipfile import ZipFile
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import requests
 from dotenv import find_dotenv, load_dotenv
 from prefect import flow, task
-from prefect.tasks import task_input_hash
 
 import wandb
 from src import wandb_params
@@ -18,11 +17,7 @@ BASE_URL = 'https://s3.amazonaws.com/capitalbikeshare-data/'
 load_dotenv(find_dotenv())
 
 
-@task(
-    retries=3,
-    cache_key_fn=task_input_hash,
-    cache_expiration=timedelta(weeks=27),
-)
+@task(retries=3)
 def download_locally(file_name: str) -> Path:
     """Download files locally to process and concatenate."""
     print(f'downloading {file_name}')
@@ -39,7 +34,7 @@ def download_locally(file_name: str) -> Path:
     return filepath
 
 
-@task(cache_key_fn=task_input_hash, cache_expiration=timedelta(weeks=27))
+@task
 def unzip_file(zip_file_path: Path) -> None:
     """Unzip root level csv file from the zip archive."""
     if zip_file_path:
@@ -55,7 +50,7 @@ def unzip_file(zip_file_path: Path) -> None:
         os.remove(zip_file_path)
 
 
-@task(cache_key_fn=task_input_hash, cache_expiration=timedelta(days=30))
+@task
 def zip_the_folder() -> str:
     """Zip the raw data folder."""
     print('creating zip archive with all the raw data')
@@ -65,7 +60,6 @@ def zip_the_folder() -> str:
 
 
 @flow(name="download and unzip all the data")
-# @task(cache_key_fn=task_input_hash, cache_expiration=timedelta(days=30))
 def download_and_unzip_all_the_data() -> None:
     cur_date = datetime.now()
     years, year_months = get_year_months(2018, 1, cur_date.year, cur_date.month)

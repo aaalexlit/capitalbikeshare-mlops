@@ -28,11 +28,16 @@ def preprocess(
     dv: DictVectorizer,
     fit_dv: bool = False,
 ) -> (sp.sparse.csr_matrix, DictVectorizer):
+    # Create ride start hour of day feature
+    df['hour'] = df.started_at.dt.hour
+    df['month'] = df.started_at.dt.month
+    df['year'] = df.started_at.dt.year
+
     if fit_dv:
         print("Fitting DictVectorizer...")
     else:
         print("Transforming data...")
-    dicts = df[get_categorical_features() + ['hour', 'year']].to_dict(
+    dicts = df[get_categorical_features() + ['hour', 'year', 'month']].to_dict(
         orient="records"
     )
     X = dv.fit_transform(dicts) if fit_dv else dv.transform(dicts)
@@ -109,7 +114,6 @@ def prepare_data(
         )
 
         print('Saving DictVectorizer and datasets')
-        # Create dest_path folder unless it already exists
         dest_path = get_data_dir() / "processed"
 
         dump_pickle(dv, dest_path / "dv.pkl")

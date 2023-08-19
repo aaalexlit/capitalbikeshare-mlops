@@ -12,6 +12,7 @@ from src.utils import (
     load_pickle,
     calculate_rmse,
     get_models_dir,
+    set_wandb_api_key,
     convert_to_dmatrix,
 )
 
@@ -39,7 +40,7 @@ def train_xgboost():
         'seed': 42,
         'nthread': 4,
     }
-
+    set_wandb_api_key()
     with wandb.init(
         project=wandb_params.WANDB_PROJECT,
         job_type="train",

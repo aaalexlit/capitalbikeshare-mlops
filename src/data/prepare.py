@@ -15,6 +15,7 @@ from src.utils import (
     dump_pickle,
     get_data_dir,
     feature_dtypes,
+    set_wandb_api_key,
     get_categorical_features,
 )
 
@@ -69,7 +70,7 @@ def prepare_data(
     test_split_month: int = 6,
 ):
     print("Preparing data...")
-
+    set_wandb_api_key()
     with wandb.init(
         project=wandb_params.WANDB_PROJECT, job_type="prepare_and_split"
     ) as wandb_run:

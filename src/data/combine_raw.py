@@ -13,6 +13,7 @@ from src.utils import (
     get_data_dir,
     feature_dtypes,
     get_year_months,
+    set_wandb_api_key,
     get_categorical_features,
 )
 
@@ -112,6 +113,7 @@ def get_file_paths_to_process(
 @flow(name="prepare and combine raw data", log_prints=True)
 def combine_raw_data():
     """Prepare data for modelling."""
+    set_wandb_api_key()
 
     with wandb.init(
         project=wandb_params.WANDB_PROJECT, job_type="prepare_and_combine"

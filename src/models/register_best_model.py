@@ -12,7 +12,13 @@ from sklearn.pipeline import (  # pylint: disable=wrong-import-order
 
 import wandb
 from src import wandb_params
-from src.utils import dump_pickle, load_pickle, calculate_rmse, get_models_dir
+from src.utils import (
+    dump_pickle,
+    load_pickle,
+    calculate_rmse,
+    get_models_dir,
+    set_wandb_api_key,
+)
 
 load_dotenv(find_dotenv())
 
@@ -47,6 +53,7 @@ def save_and_log_pipeline(
 @flow(name="register best model", log_prints=True)
 # sweep_id povofsvd
 def register_best_model(sweep_id: str):
+    set_wandb_api_key()
     config = get_best_run_config(sweep_id)
 
     with wandb.init(

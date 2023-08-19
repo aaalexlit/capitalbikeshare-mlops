@@ -11,7 +11,7 @@ from prefect.tasks import task_input_hash
 
 import wandb
 from src import wandb_params
-from src.utils import get_data_dir, get_year_months, load_wandb_api_key
+from src.utils import get_data_dir, get_year_months, set_wandb_api_key
 
 BASE_URL = 'https://s3.amazonaws.com/capitalbikeshare-data/'
 
@@ -83,19 +83,17 @@ def download_and_unzip_all_the_data() -> None:
 @flow(name="download raw data", log_prints=True)
 def download_raw_data():
     """Download all available raw data starting from Jan 2018 up till the current date."""
-    if not os.getenv('WANDB_API_KEY'):
-        wandb.login(key=load_wandb_api_key())
-    wandb_run = wandb.init(
+    set_wandb_api_key()
+    with wandb.init(
         project=wandb_params.WANDB_PROJECT, job_type="upload"
-    )
+    ) as wandb_run:
+        all_downloaded = download_and_unzip_all_the_data()
 
-    all_downloaded = download_and_unzip_all_the_data()
-
-    artifact = wandb.Artifact(wandb_params.RAW_DATA, type='raw_data')
-    all_zip = zip_the_folder(wait_for=[all_downloaded])
-    artifact.add_file(Path(all_zip))
-    print('uploading raw data artifact to wandb')
-    wandb_run.log_artifact(artifact)
+        artifact = wandb.Artifact(wandb_params.RAW_DATA, type='raw_data')
+        all_zip = zip_the_folder(wait_for=[all_downloaded])
+        artifact.add_file(Path(all_zip))
+        print('uploading raw data artifact to wandb')
+        wandb_run.log_artifact(artifact)
 
 
 if __name__ == '__main__':

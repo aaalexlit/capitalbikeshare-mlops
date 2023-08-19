@@ -7,7 +7,12 @@ from wandb.xgboost import WandbCallback
 
 import wandb
 from src import wandb_params
-from src.utils import load_pickle, calculate_rmse, convert_to_dmatrix
+from src.utils import (
+    load_pickle,
+    calculate_rmse,
+    set_wandb_api_key,
+    convert_to_dmatrix,
+)
 
 load_dotenv(find_dotenv())
 
@@ -88,6 +93,7 @@ def train_xgb():
 
 @flow(name="optimize XGB hyperparameters using wandb sweeps", log_prints=True)
 def train_sweep():
+    set_wandb_api_key()
     sweep_id = wandb.sweep(SWEEP_CONFIG, project=wandb_params.WANDB_PROJECT)
     wandb.agent(sweep_id, function=train_xgb, count=10)
 

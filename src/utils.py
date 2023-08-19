@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import numpy as np
@@ -84,8 +85,9 @@ def dump_pickle(obj, file_path: Path) -> None:
         joblib.dump(obj, f_out)
 
 
-def load_wandb_api_key():
-    return Secret.load('wandb-api-key').get()
+def set_wandb_api_key():
+    if not os.getenv('WANDB_API_KEY'):
+        os.environ['WANDB_API_KEY'] = Secret.load('wandb-api-key').get()
 
 
 def calculate_rmse(

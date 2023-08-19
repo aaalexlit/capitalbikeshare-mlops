@@ -56,6 +56,7 @@ def process_data(
 
     # Drop rows with start_station_id not a number
     df = df[df.start_station_id.str.contains('^[0-9]*$', regex=True, na=False)]
+    df = df[df.end_station_id.str.contains('^[0-9]*$', regex=True, na=False)]
 
     # Create ride start hour of day feature
     df['hour'] = df.started_at.dt.hour

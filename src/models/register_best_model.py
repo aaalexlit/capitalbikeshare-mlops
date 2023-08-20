@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import click
+# import click
 import xgboost as xgb
 from dotenv import find_dotenv, load_dotenv
 from prefect import flow
@@ -49,8 +49,8 @@ def save_and_log_pipeline(
 
 
 @flow(name="register best model", log_prints=True)
-@click.command()
-@click.argument("sweep_id", nargs=1)
+# @click.command()
+# @click.argument("sweep_id", nargs=1)
 # sweep_id povofsvd
 def register_best_model(sweep_id: str):
     set_wandb_api_key()

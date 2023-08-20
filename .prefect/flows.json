@@ -3,6 +3,6 @@
   "optimize XGB hyperparameters using wandb sweeps": "src/models/xgb_sweep.py:train_sweep",
   "prepare and combine raw data": "src/data/combine_raw.py:combine_raw_data",
   "prepare and split into train, val, test": "src/data/prepare.py:prepare_data",
-  "register-best-model": "src/models/register_best_model.py:register_best_model",
+  "register best model": "src/models/register_best_model.py:register_best_model",
   "train baseline model": "src/models/xgb_baseline.py:train_xgboost"
 }

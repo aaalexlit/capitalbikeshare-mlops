@@ -29,3 +29,5 @@ Create all the deployments
 ```shell
 prefect deploy --all
 ```
+
+Now all the deployments can be run from the Prefect UI

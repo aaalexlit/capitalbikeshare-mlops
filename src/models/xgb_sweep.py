@@ -95,7 +95,8 @@ def train_xgb():
 def train_sweep():
     set_wandb_api_key()
     sweep_id = wandb.sweep(SWEEP_CONFIG, project=wandb_params.WANDB_PROJECT)
-    wandb.agent(sweep_id, function=train_xgb, count=10)
+    wandb.agent(sweep_id, function=train_xgb, count=5)
+    return sweep_id
 
 
 if __name__ == "__main__":

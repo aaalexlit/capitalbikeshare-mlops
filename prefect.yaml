@@ -42,3 +42,18 @@ deployments:
     description: "Add features and split into train-val-test"
     entrypoint: src/data/prepare.py:prepare_data
     work_pool: *capitalbikeshare_workpool
+  - name: capitalbikeshare-mlops-xgb-baseline
+    tags: ["training", "capitalbikeshare-mlops"]
+    description: "Train an XGBooster with default params"
+    entrypoint: src/models/xgb_baseline.py:train_xgboost
+    work_pool: *capitalbikeshare_workpool
+  - name: capitalbikeshare-mlops-xgb-sweep
+    tags: ["training", "capitalbikeshare-mlops"]
+    description: "XGBoost hyperparameter tuning with wandb sweeps"
+    entrypoint: src/models/xgb_sweep.py:train_sweep
+    work_pool: *capitalbikeshare_workpool
+  - name: capitalbikeshare-mlops-register-best-model
+    tags: ["training", "capitalbikeshare-mlops"]
+    description: "XGBoost hyperparameter tuning with wandb sweeps"
+    entrypoint: src/models/register_best_model.py:register_best_model
+    work_pool: *capitalbikeshare_workpool

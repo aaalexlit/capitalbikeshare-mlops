@@ -31,3 +31,9 @@ prefect deploy --all
 ```
 
 Now all the deployments can be run from the Prefect UI
+The `register best model/capitalbikeshare-mlops-register-best-model` needs a parameter - sweep_id from the WANDB sweep that gets launched in `capitalbikeshare-mlops-xgb-sweep` deployment
+
+It's also possible to run it from the command line
+```shell
+prefect deployment run 'register best model/capitalbikeshare-mlops-register-best-model' -p sweep_id=29jxm814
+```

@@ -19,6 +19,9 @@ The project consists of 3 repos
 # Data and Modelling flow
 
 This project is using [Weights and Biases](https://wandb.ai/site) for experiment tracking and model registry.
+Please check the project on WANDB, it's public
+https://wandb.ai/aaalex-lit/capitalbikeshare-mlops/overview
+
 ## The data
 The data is provided by [Capital Bikeshare](https://www.capitalbikeshare.com/system-data) and contains information about bike rides in Washington DC.
 Downloadable files are available on the following link https://s3.amazonaws.com/capitalbikeshare-data/index.html

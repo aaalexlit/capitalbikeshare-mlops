@@ -63,9 +63,8 @@ def register_best_model(sweep_id: str):
     ) as wandb_run:
         model = xgb.XGBRegressor(
             **config,
-            num_boost_round=500,
+            n_estimators=500,
             early_stopping_rounds=50,
-            verbose_eval=50,
             callbacks=[WandbCallback(log_feature_importance=False)],
         )
         data_artifact = wandb_run.use_artifact(

@@ -3,7 +3,7 @@ ipykernel==6.25.0
 requests==2.31.0
 matplotlib==3.7.2
 seaborn==0.12.2
-prefect==2.11.1
+prefect==2.11.4
 wandb==0.15.8
 xgboost==1.7.6
 black[jupyter]==23.7.0

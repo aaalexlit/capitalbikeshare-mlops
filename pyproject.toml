@@ -5,7 +5,8 @@ disable = [
     "missing-class-docstring",
     "missing-module-docstring",
     "invalid-name",
-    "too-few-public-methods"
+    "too-few-public-methods",
+    "ungrouped-imports"
 ]
 
 [tool.black]
@@ -14,6 +15,7 @@ target-verion = ['py310']
 skip-string-normalization = true
 
 [tool.isort]
+py_version = 310
 multi_line_output = 3
 length_sort = true
 split_on_trailing_comma = true

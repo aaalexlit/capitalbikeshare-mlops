@@ -4,6 +4,9 @@ import xgboost as xgb
 from dotenv import find_dotenv, load_dotenv
 from prefect import flow
 from wandb.xgboost import WandbCallback
+from prefect.deployments import (  # pylint: disable=wrong-import-order
+    run_deployment,
+)
 
 import wandb
 from src import wandb_params
@@ -91,7 +94,23 @@ def train_xgb():
     wandb.log({'test-rmse': calculate_rmse(booster, y_test, X_test)})
 
 
-@flow(name="optimize XGB hyperparameters using wandb sweeps", log_prints=True)
+# pylint: disable=unused-argument
+def trigger_model_retraining(cur_flow, cur_flow_run, state):
+    print(
+        f"hello from {cur_flow_run.name}'s completion hook |"
+        f" the return value was {(r := state.result())!r}"
+    )
+    run_deployment(
+        name="register best model/capitalbikeshare-mlops-register-best-model",
+        parameters={'sweep_id': r},
+    )
+
+
+@flow(
+    name="optimize XGB hyperparameters using wandb sweeps",
+    log_prints=True,
+    on_completion=[trigger_model_retraining],
+)
 def train_sweep():
     set_wandb_api_key()
     sweep_id = wandb.sweep(SWEEP_CONFIG, project=wandb_params.WANDB_PROJECT)

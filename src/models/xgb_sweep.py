@@ -94,10 +94,10 @@ def train_xgb():
     wandb.log({'test-rmse': calculate_rmse(booster, y_test, X_test)})
 
 
-# pylint: disable=unused-argument
-def trigger_model_retraining(cur_flow, cur_flow_run, state):
+# pylint: disable=unused-argument,redefined-outer-name
+def trigger_model_retraining(flow, flow_run, state):
     print(
-        f"hello from {cur_flow_run.name}'s completion hook |"
+        f"hello from {flow_run.name}'s completion hook |"
         f" the return value was {(r := state.result())!r}"
     )
     run_deployment(
@@ -109,6 +109,7 @@ def trigger_model_retraining(cur_flow, cur_flow_run, state):
 @flow(
     name="optimize XGB hyperparameters using wandb sweeps",
     log_prints=True,
+    persist_result=True,
     on_completion=[trigger_model_retraining],
 )
 def train_sweep():

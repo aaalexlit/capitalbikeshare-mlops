@@ -84,7 +84,7 @@ def train_xgb():
     booster = xgb.train(
         params=xgb_params,
         dtrain=train,
-        num_boost_round=500,
+        num_boost_round=200,
         evals=[(val, 'validation')],
         early_stopping_rounds=50,
         callbacks=[WandbCallback()],

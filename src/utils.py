@@ -97,7 +97,9 @@ def calculate_rmse(
     convert: bool = True,
 ) -> float:
     X = convert_to_dmatrix(X) if convert else X
-    y_pred = booster.predict(X, validate_features=False)
+    y_pred = booster.predict(
+        X, validate_features=False, iteration_range=booster.best_iteration
+    )
     return mean_squared_error(y_true, y_pred, squared=False)
 
 

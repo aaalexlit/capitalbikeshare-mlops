@@ -32,6 +32,18 @@ def train_booster(params, train: xgb.DMatrix, val: xgb.DMatrix) -> xgb.Booster:
     )
 
 
+def log_val_preds_table(booster, val, y_val):
+    preds_artifact = wandb.Artifact(
+        'baseline_booster_val_preds', type='predictions'
+    )
+    val_preds = booster.predict(val, iteration_range=booster.best_iteration)
+    val_preds_table = wandb.Table(
+        columns=["y_val_true", "y_val_preds"], data=zip(y_val, val_preds)
+    )
+    preds_artifact.add(val_preds_table, name="preds vs true for val set")
+    wandb.log_artifact(preds_artifact)
+
+
 @flow(name="train baseline model", log_prints=True)
 def train_xgboost():
     print("Training model...")
@@ -63,6 +75,8 @@ def train_xgboost():
 
         print("Training model...")
         booster = train_booster(xgb_params, train, val)
+
+        log_val_preds_table(booster, val, y_val)
 
         wandb_run.log({'test-rmse': calculate_rmse(booster, y_test, X_test)})
 

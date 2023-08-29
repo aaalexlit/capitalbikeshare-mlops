@@ -40,7 +40,7 @@ def log_val_preds_table(booster, val, y_val):
         val, iteration_range=(0, booster.best_iteration + 1)
     )
     val_preds_table = wandb.Table(
-        columns=["y_val_true", "y_val_preds"], data=zip(y_val, val_preds)
+        columns=["y_val_true", "y_val_preds"], data=list(zip(y_val, val_preds))
     )
     preds_artifact.add(val_preds_table, name="preds vs true for val set")
     wandb.log_artifact(preds_artifact)

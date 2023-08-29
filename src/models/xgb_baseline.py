@@ -36,7 +36,9 @@ def log_val_preds_table(booster, val, y_val):
     preds_artifact = wandb.Artifact(
         'baseline_booster_val_preds', type='predictions'
     )
-    val_preds = booster.predict(val, iteration_range=booster.best_iteration)
+    val_preds = booster.predict(
+        val, iteration_range=(0, booster.best_iteration + 1)
+    )
     val_preds_table = wandb.Table(
         columns=["y_val_true", "y_val_preds"], data=zip(y_val, val_preds)
     )

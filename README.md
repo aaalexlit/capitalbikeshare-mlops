@@ -11,6 +11,8 @@ A customer takes a bike from a station and wants to know how long it will take t
 
 # Whole project structure
 
+![Project diagram](docs/images/full_diagram_white.svg)
+
 The project consists of 3 repos
 1. [This repo](https://github.com/aaalexlit/capitalbikeshare-mlops) - contains the code for the data preparation, model training, and registering the model in the model registry
 1. [The web service repo](https://github.com/aaalexlit/capitalbikeshare-service) - contains the code for the web service that serves the model

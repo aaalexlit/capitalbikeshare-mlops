@@ -11,7 +11,7 @@ A customer takes a bike from a station and wants to know how long it will take t
 
 # Whole project structure
 
-![Project diagram](docs/images/full_diagram_white.svg)
+![Project diagram](docs/images/full_diagram_white.png)
 
 The project consists of 3 repos
 1. [This repo](https://github.com/aaalexlit/capitalbikeshare-mlops) - contains the code for the data preparation, model training, and registering the model in the model registry

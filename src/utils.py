@@ -9,6 +9,8 @@ from prefect import task
 from sklearn.metrics import mean_squared_error
 from prefect.blocks.system import Secret  # pylint: disable=ungrouped-imports
 
+import wandb
+
 TARGET_COL = 'duration'
 
 
@@ -109,3 +111,20 @@ def convert_to_dmatrix(
     feature_names: np.ndarray = None,
 ) -> xgb.DMatrix:
     return xgb.DMatrix(X, label=y, feature_names=feature_names)
+
+
+def log_val_preds_table(
+    table_name: str,
+    booster,
+    val: sp.sparse.csr_matrix | xgb.DMatrix,
+    y_val: np.ndarray,
+):
+    preds_artifact = wandb.Artifact(table_name, type='predictions')
+    val_preds = booster.predict(
+        val, iteration_range=(0, booster.best_iteration + 1)
+    )
+    val_preds_table = wandb.Table(
+        columns=["y_val_true", "y_val_preds"], data=list(zip(y_val, val_preds))
+    )
+    preds_artifact.add(val_preds_table, name="preds vs true for val set")
+    wandb.log_artifact(preds_artifact)

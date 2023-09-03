@@ -14,6 +14,7 @@ from src.utils import (
     get_models_dir,
     set_wandb_api_key,
     convert_to_dmatrix,
+    log_val_preds_table,
 )
 
 load_dotenv(find_dotenv())
@@ -30,20 +31,6 @@ def train_booster(params, train: xgb.DMatrix, val: xgb.DMatrix) -> xgb.Booster:
         callbacks=[WandbCallback()],
         verbose_eval=False,
     )
-
-
-def log_val_preds_table(booster, val, y_val):
-    preds_artifact = wandb.Artifact(
-        'baseline_booster_val_preds', type='predictions'
-    )
-    val_preds = booster.predict(
-        val, iteration_range=(0, booster.best_iteration + 1)
-    )
-    val_preds_table = wandb.Table(
-        columns=["y_val_true", "y_val_preds"], data=list(zip(y_val, val_preds))
-    )
-    preds_artifact.add(val_preds_table, name="preds vs true for val set")
-    wandb.log_artifact(preds_artifact)
 
 
 @flow(name="train baseline model", log_prints=True)
@@ -78,7 +65,7 @@ def train_xgboost():
         print("Training model...")
         booster = train_booster(xgb_params, train, val)
 
-        log_val_preds_table(booster, val, y_val)
+        log_val_preds_table('baseline_booster_val_preds', booster, val, y_val)
 
         wandb_run.log({'test-rmse': calculate_rmse(booster, y_test, X_test)})
 

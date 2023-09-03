@@ -18,6 +18,7 @@ from src.utils import (
     calculate_rmse,
     get_models_dir,
     set_wandb_api_key,
+    log_val_preds_table,
 )
 
 load_dotenv(find_dotenv())
@@ -82,6 +83,8 @@ def register_best_model(sweep_id: str):
             y_train,
             eval_set=[(X_val, y_val)],
         )
+
+        log_val_preds_table('best_model_val_preds', model, X_val, y_val)
 
         wandb_run.log(
             {'test-rmse': calculate_rmse(model, y_test, X_test, convert=False)}

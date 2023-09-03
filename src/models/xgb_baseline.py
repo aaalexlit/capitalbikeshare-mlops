@@ -26,7 +26,7 @@ def train_booster(params, train: xgb.DMatrix, val: xgb.DMatrix) -> xgb.Booster:
         params=params,
         dtrain=train,
         num_boost_round=1000,
-        evals=[(val, 'validation')],
+        evals=[(val, 'validation'), (train, 'training')],
         early_stopping_rounds=50,
         callbacks=[WandbCallback()],
         verbose_eval=False,

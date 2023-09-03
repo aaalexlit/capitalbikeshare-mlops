@@ -81,7 +81,7 @@ def register_best_model(sweep_id: str):
         model.fit(
             X_train,
             y_train,
-            eval_set=[(X_val, y_val)],
+            eval_set=[(X_val, y_val), (X_train, y_train)],
         )
 
         log_val_preds_table('best_model_val_preds', model, X_val, y_val)
